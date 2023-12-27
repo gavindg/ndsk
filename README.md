@@ -13,7 +13,7 @@
 
 #### Usage
 
-`ndkk [Kanji] [flags...]`
+`ndsk [Kanji] [flags...]`
 
 ##### Flags
 * `-k` -- Lists the Kun'yomi readings of the given `Kanji`
@@ -21,7 +21,7 @@
 
 Example: get the Kun'yomi and On'yomi readings of '日'
 
-`ndkk 日 -k -o`
+`ndsk 日 -k -o`
 
 Output:
 
@@ -29,3 +29,5 @@ Output:
 Kun: ひ, -び, -か
 On: ニチ, ジツ
 ```
+
+Note: output is ordered in the order of the flags, so `ndsk 日 -o -k` would print the above results with On'yomi readings first and Kun'yomi second.
