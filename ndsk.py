@@ -15,13 +15,29 @@ JAPANESE_CHAR_UNICODE_RANGES = [
     {'from': ord(u'\u3040'), 'to': ord(u'\u309f')},         # Japanese Hiragana
     {"from": ord(u"\u30a0"), "to": ord(u"\u30ff")},         # Japanese Katakana
     {"from": ord(u"\u2e80"), "to": ord(u"\u2eff")},         # cjk radicals supplement
-    {"from": ord(u"\u4e00"), "to": ord(u"\u9fff")},
-    {"from": ord(u"\u3400"), "to": ord(u"\u4dbf")},
-    {"from": ord(u"\U00020000"), "to": ord(u"\U0002a6df")},
-    {"from": ord(u"\U0002a700"), "to": ord(u"\U0002b73f")},
-    {"from": ord(u"\U0002b740"), "to": ord(u"\U0002b81f")},
-    {"from": ord(u"\U0002b820"), "to": ord(u"\U0002ceaf")}
+    {"from": ord(u"\u4e00"), "to": ord(u"\u9fff")},         # cjk unified ideographs
+    {"from": ord(u"\u3400"), "to": ord(u"\u4dbf")},         # cjk extension a
+    {"from": ord(u"\U00020000"), "to": ord(u"\U0002a6df")}, # cjk extension b
+    {"from": ord(u"\U0002a700"), "to": ord(u"\U0002b73f")}, # cjk extension c
+    {"from": ord(u"\U0002b740"), "to": ord(u"\U0002b81f")}, # cjk extension d
+    {"from": ord(u"\U0002b820"), "to": ord(u"\U0002ceaf")}, # cjk extension e
+    {"from": ord(u"\U0002ceb0"), "to": ord(u"\U0002ebef")}, # cjk extension f
+    {"from": ord(u"\U00030000"), "to": ord(u"\U0003134F")}  # cjk extension g
 ]
+
+
+KANJI_ONLY_UNICODE_RANGES = [
+    {"from": ord(u"\u4e00"), "to": ord(u"\u9fff")},         # cjk unified ideographs
+    {"from": ord(u"\u3400"), "to": ord(u"\u4dbf")},         # cjk extension a
+    {"from": ord(u"\U00020000"), "to": ord(u"\U0002a6df")}, # cjk extension b
+    {"from": ord(u"\U0002a700"), "to": ord(u"\U0002b73f")}, # cjk extension c
+    {"from": ord(u"\U0002b740"), "to": ord(u"\U0002b81f")}, # cjk extension d
+    {"from": ord(u"\U0002b820"), "to": ord(u"\U0002ceaf")}, # cjk extension e
+    {"from": ord(u"\U0002ceb0"), "to": ord(u"\U0002ebef")}, # cjk extension f
+    {"from": ord(u"\U00030000"), "to": ord(u"\U0003134F")}  # cjk extension g 
+]
+
+
 
 
 def main():
@@ -93,23 +109,29 @@ def kanji_scrape(soup, kanji_scrape_info):
     out = ""
     for elem in kanji_scrape_info:
         if elem == "kun":
-            readings = soup.find("div", class_="kanji-details__main-readings").find("dl", class_="dictionary_entry kun_yomi").find("dd", class_="kanji-details__main-readings-list").find_all("a")
-            # TODO: check if readings is empty...
-            out += "Kun: "
-            for reading in readings:
-                out += reading.text + ", "
-            if out[-2:] == ", ":
-                out = out[:-2] # if the last two chars are the comma/space, remove it & add a period.   
-            out += "\n"
+            try:
+                readings = soup.find("div", class_="kanji-details__main-readings").find("dl", class_="dictionary_entry kun_yomi").find("dd", class_="kanji-details__main-readings-list").find_all("a")
+                # TODO: check if readings is empty...
+                out += "Kun: "
+                for reading in readings:
+                    out += reading.text + ", "
+                if out[-2:] == ", ":
+                    out = out[:-2] # if the last two chars are the comma/space, remove it & add a period.   
+                out += "\n"
+            except AttributeError:
+                pass # no kun'yomi readings
         if elem == "on":
-            readings = soup.find("div", class_="kanji-details__main-readings").find("dl", class_="dictionary_entry on_yomi").find("dd", class_="kanji-details__main-readings-list").find_all("a")
-            # TODO: check if readings is empty...
-            out += "On: "
-            for reading in readings:
-                out += reading.text + ", "
-            if out[-2:] == ", ":
-                out = out[:-2] # if the last two chars are the comma/space, remove it & add a period.
-            out += "\n"
+            try:
+                readings = soup.find("div", class_="kanji-details__main-readings").find("dl", class_="dictionary_entry on_yomi").find("dd", class_="kanji-details__main-readings-list").find_all("a")
+                # TODO: check if readings is empty...
+                out += "On: "
+                for reading in readings:
+                    out += reading.text + ", "
+                if out[-2:] == ", ":
+                    out = out[:-2] # if the last two chars are the comma/space, remove it & add a period.
+                out += "\n"
+            except AttributeError:
+                pass # no on'yomi readings
     return out
 
 
@@ -121,7 +143,15 @@ that such characters can be found in.
 logic from StackOverflow, reference: https://stackoverflow.com/questions/30069846/how-to-find-out-chinese-or-japanese-character-in-a-string-in-python
 """
 def is_japanese_char(char):
-    return any([range["from"] <= ord(char) <= range["to"] for range in JAPANESE_CHAR_UNICODE_RANGES])
+    return len(char) == 1 and any([range["from"] <= ord(char) <= range["to"] for range in JAPANESE_CHAR_UNICODE_RANGES])
+
+
+"""
+This function takes in a character and determines whether or not it is a
+Kanji. Essentially, it checks all of the ranges excluding hiragana/katakana.
+"""
+def is_kanji(char):
+    return len(char) == 1 and any([range["from"] <= ord(char) <= range["to"] for range in KANJI_ONLY_UNICODE_RANGES])
 
 
 """
