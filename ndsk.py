@@ -23,6 +23,8 @@ JAPANESE_CHAR_UNICODE_RANGES = [
     {"from": ord(u"\U0002b820"), "to": ord(u"\U0002ceaf")}
 ]
 
+verbose = False
+
 
 def main():
     jp_search_term, word_scrape_info, kanji_scrape_info = parse_input(sys.argv)
@@ -37,7 +39,7 @@ def main():
         req_list.append("%23kanji " + jp_search_term)
 
     for req in req_list:
-        page = requests.get(BASE_URL + req) # TODO: must be able to handle a bad request / case where user is not connected to internet
+        page = handle_request(BASE_URL + req) # TODO: must be able to handle a bad request / case where user is not connected to internet
         soup = BeautifulSoup(page.content, "html.parser") 
         
         if "word" in req:
@@ -47,6 +49,30 @@ def main():
 
     print(out, end="") # no \n... that's automatically added 
 
+"""
+This function makes a request to the given url and returns the page as a
+requests.Response object.
+
+It also handles any errors that might arise.
+"""
+def handle_request(url):
+    try:
+        page = requests.get(url, timeout=3)
+        return page
+    except requests.exceptions.Timeout:
+        print("Connection timed out.")
+        exit(1)
+    except requests.exceptions.HTTPError:
+        print("Invalid HTTPS response; please try again.")
+        exit(1)
+    except requests.exceptions.ConnectionError:
+        print("Could not connect. Are you connected to the internet?")
+        exit(1)
+    except requests.RequestException as ex:
+        if (verbose):
+            print(f"A {type(ex).__name__} error was raised when making a request to {url}.")
+        else:
+            print("Something went wrong.")
 
 """
 This function scrapes the #word page for the given input.
@@ -184,6 +210,8 @@ def parse_input(args):
                 kanji_scrape_info.append("on")
             elif argument == "-k":
                 kanji_scrape_info.append("kun")
+            elif argument == "-v" or argument == "--verbose":
+                verbose = True
             else:
                 print(f"error: unrecognizable flag/argument \"{argument}\"")
                 exit(1)
