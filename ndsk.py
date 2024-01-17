@@ -24,11 +24,9 @@ JAPANESE_CHAR_UNICODE_RANGES = [
     {"from": ord(u"\U0002b820"), "to": ord(u"\U0002ceaf")}
 ]
 
-verbose = False # used to give better explanations when errors occur
-
 
 def main():
-    jp_search_term, word_scrape_info, kanji_scrape_info = parse_input(sys.argv)
+    jp_search_term, word_scrape_info, kanji_scrape_info, verbose = parse_input(sys.argv)
     req_list = []
     out = ""        # output string
 
@@ -40,7 +38,7 @@ def main():
         req_list.append("%23kanji " + jp_search_term)
 
     for req in req_list:
-        page = handle_request(BASE_URL + req) # TODO: must be able to handle a bad request / case where user is not connected to internet
+        page = handle_request(BASE_URL + req, verbose)
         soup = BeautifulSoup(page.content, "html.parser") 
         
         if "word" in req:
@@ -56,7 +54,7 @@ requests.Response object.
 
 It also handles any errors that might arise.
 """
-def handle_request(url):
+def handle_request(url, verbose = False):
     try:
         page = requests.get(url, timeout=3)
         return page
@@ -118,35 +116,60 @@ the function `parse_input`.
 """
 def kanji_scrape(soup, kanji_scrape_info):
     out = ""
+    verbose = "verbose" in kanji_scrape_info
+
     for elem in kanji_scrape_info:
         if elem == "kun":
-            readings = soup.find("div", class_="kanji-details__main-readings").find("dl", class_="dictionary_entry kun_yomi").find("dd", class_="kanji-details__main-readings-list").find_all("a")
-            # TODO: check if readings is empty...
-            out += "Kun: "
-            for reading in readings:
-                out += reading.text.strip() + ", "
-            if out[-2:] == ", ":
-                out = out[:-2]  # if the last two chars are the comma/space, remove it.
-            out += "\n"
-        if elem == "on":
-            readings = soup.find("div", class_="kanji-details__main-readings").find("dl", class_="dictionary_entry on_yomi").find("dd", class_="kanji-details__main-readings-list").find_all("a")
-            # TODO: check if readings is empty...
-            out += "On: "
-            for reading in readings:
-                out += reading.text.strip() + ", "
-            if out[-2:] == ", ":
-                out = out[:-2]  # if the last two chars are the comma/space, remove it.
-            out += "\n"
-        if elem == "meaning":
-            meanings = soup.find("div", class_="kanji-details__main-meanings")
-            # meanings = meanings.strip()  # remove any whitespace
-            # TODO: check if readings is empty...
-            out += "Meaning: "
-            for meaning in meanings:
-                out += meaning.text.strip() + ", "
-            if out[-2:] == ", ":
-                out = out[:-2]  # if the last two chars are the comma/space, remove it.
-            out += "\n"
+            try:
+                readings = soup.find("div", class_="kanji-details__main-readings").find("dl", class_="dictionary_entry kun_yomi").find("dd", class_="kanji-details__main-readings-list").find_all("a")
+                if readings is not None:
+                    out += "Kun: "
+                    for reading in readings:
+                        out += reading.text.strip() + ", "
+                    if out[-2:] == ", ":
+                        out = out[:-2]  # if the last two chars are the comma/space, remove it.
+                    out += "\n"
+                elif verbose:
+                    out += "No Kun'yomi readings found.\n"
+            except AttributeError:  # can be thrown by soup.find() if the div dne
+                if verbose:
+                    out += "No Kun'yomi readings found.\n"
+
+        elif elem == "on":
+            try:
+                readings = soup.find("div", class_="kanji-details__main-readings").find("dl", class_="dictionary_entry on_yomi").find("dd", class_="kanji-details__main-readings-list").find_all("a")
+                if readings is not None:
+                    out += "On: "
+                    for reading in readings:
+                        out += reading.text.strip() + ", "
+                    if out[-2:] == ", ":
+                        out = out[:-2]  # if the last two chars are the comma/space, remove it.
+                    out += "\n"
+                elif verbose:
+                    out += "No On'yomi readings found.\n"
+            except AttributeError:  # can be thrown by soup.find() if the div dne
+                if verbose:
+                    out += "No On'yomi readings found.\n"
+
+        elif elem == "meaning":
+            try:
+                meanings = soup.find("div", class_="kanji-details__main-meanings")
+                if meanings is not None:
+                    out += "Meaning: "
+                    for meaning in meanings:
+                        out += meaning.text.strip() + ", "
+                    if out[-2:] == ", ":
+                        out = out[:-2]  # if the last two chars are the comma/space, remove it.
+                    out += "\n"
+                elif verbose:
+                    out += "No meanings found.\n"
+            except AttributeError:  # can be thrown by soup.find() if the div dne
+                if verbose:
+                    out += "No meanings found.\n"
+
+        else:  # probably "verbose" or otherwise invalid, ignore it...
+            pass
+
     return out
 
 
@@ -193,6 +216,7 @@ TODO:
 def parse_input(args):
     word_scrape_info = []
     kanji_scrape_info = []
+    verbose = False
 
     # nothing to do if we don't have even a kanji...
     if len(args) < 2:
@@ -223,6 +247,7 @@ def parse_input(args):
                 kanji_scrape_info.append("kun")
             elif argument == "-v" or argument == "--verbose":
                 verbose = True
+                kanji_scrape_info.append("verbose")
             else:
                 print(f"error: unrecognizable flag/argument \"{argument}\"")
                 exit(1)
@@ -231,7 +256,7 @@ def parse_input(args):
     # first, the kanji / search term, 
     # then the info to be used in scraping the #word page,
     # and finally the info for scraping the #kanji page.
-    return (jp_search_term, word_scrape_info, kanji_scrape_info)
+    return (jp_search_term, word_scrape_info, kanji_scrape_info, verbose)
 
 
 if __name__ == "__main__":
