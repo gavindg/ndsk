@@ -5,7 +5,8 @@ from bs4 import BeautifulSoup
 # used for making searches on jisho
 BASE_URL = "https://jisho.org/search/"
 
-# used by `is_japanese_char()`. ranges from StackOverflow, reference: https://stackoverflow.com/questions/30069846/how-to-find-out-chinese-or-japanese-character-in-a-string-in-python
+# used by `is_japanese_char()`. ranges from StackOverflow,
+# reference: https://stackoverflow.com/questions/30069846/how-to-find-out-chinese-or-japanese-character-in-a-string-in-python
 # TODO: remove unnecessary ranges if necessary
 JAPANESE_CHAR_UNICODE_RANGES = [
     {"from": ord(u"\u3330"), "to": ord(u"\u33ff")},
@@ -23,13 +24,13 @@ JAPANESE_CHAR_UNICODE_RANGES = [
     {"from": ord(u"\U0002b820"), "to": ord(u"\U0002ceaf")}
 ]
 
-verbose = False
+verbose = False # used to give better explanations when errors occur
 
 
 def main():
     jp_search_term, word_scrape_info, kanji_scrape_info = parse_input(sys.argv)
     req_list = []
-    out = ""
+    out = ""        # output string
 
     # # if we need to scrape the #word page for this kanji, add a request for it
     if word_scrape_info != []:
@@ -47,7 +48,7 @@ def main():
         else: # must be a kanji request
             out += kanji_scrape(soup, kanji_scrape_info)
 
-    print(out, end="") # no \n... that's automatically added 
+    print(out, end="") # no \n... that's automatically added by the scraping functions...
 
 """
 This function makes a request to the given url and returns the page as a
@@ -69,10 +70,10 @@ def handle_request(url):
         print("Could not connect. Are you connected to the internet?")
         exit(1)
     except requests.RequestException as ex:
-        if (verbose):
+        if verbose:
             print(f"A {type(ex).__name__} error was raised when making a request to {url}.")
         else:
-            print("Something went wrong.")
+            print("Something went wrong; please try again.")
 
 """
 This function scrapes the #word page for the given input.
@@ -123,18 +124,28 @@ def kanji_scrape(soup, kanji_scrape_info):
             # TODO: check if readings is empty...
             out += "Kun: "
             for reading in readings:
-                out += reading.text + ", "
+                out += reading.text.strip() + ", "
             if out[-2:] == ", ":
-                out = out[:-2] # if the last two chars are the comma/space, remove it & add a period.   
+                out = out[:-2]  # if the last two chars are the comma/space, remove it.
             out += "\n"
         if elem == "on":
             readings = soup.find("div", class_="kanji-details__main-readings").find("dl", class_="dictionary_entry on_yomi").find("dd", class_="kanji-details__main-readings-list").find_all("a")
             # TODO: check if readings is empty...
             out += "On: "
             for reading in readings:
-                out += reading.text + ", "
+                out += reading.text.strip() + ", "
             if out[-2:] == ", ":
-                out = out[:-2] # if the last two chars are the comma/space, remove it & add a period.
+                out = out[:-2]  # if the last two chars are the comma/space, remove it.
+            out += "\n"
+        if elem == "meaning":
+            meanings = soup.find("div", class_="kanji-details__main-meanings")
+            # meanings = meanings.strip()  # remove any whitespace
+            # TODO: check if readings is empty...
+            out += "Meaning: "
+            for meaning in meanings:
+                out += meaning.text.strip() + ", "
+            if out[-2:] == ", ":
+                out = out[:-2]  # if the last two chars are the comma/space, remove it.
             out += "\n"
     return out
 
@@ -199,13 +210,13 @@ def parse_input(args):
 
     if args is []:
         # do a generic info splash... for now, just print the kanji's kun'yomi and on'yomi
-        kanji_scrape_info = ["kun", "on"]
+        kanji_scrape_info = ["meaning", "kun", "on"]
     
     else:
         # parse flags to give direction to the scrapers.
         for argument in args:
             if argument == "-m":
-                word_scrape_info.append("meaning") # note: scraping meanings not currently supported.
+                kanji_scrape_info.append("meaning") # note: scraping meanings not currently supported.
             elif argument == "-o":
                 kanji_scrape_info.append("on")
             elif argument == "-k":
