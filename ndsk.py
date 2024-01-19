@@ -86,8 +86,21 @@ TODO:
 * test me
 """
 def word_scrape(soup, word_scrape_info):
+    out = ""
+    verbose = "verbose" in word_scrape_info
+
+    for elem in word_scrape_info:
+        if elem == "def":  # get the definition...
+            pass
+
+        else:  # probably "verbose" or potentially an invalid element that should be ignored.
+            pass
+
+    # not quite ready yet...
     print("scraping #word page not currently supported.")
     exit(1)
+
+    return out
 
 """
 This function scrapes the #kanji and returns a string containing
@@ -233,11 +246,11 @@ def parse_input(args):
     args = args[2:] 
 
     if args is []:
-        # do a generic info splash... for now, just print the kanji's kun'yomi and on'yomi
+        # do a generic info splash... for now, just print the kanji's inherent meaning, kun'yomi, and on'yomi
         kanji_scrape_info = ["meaning", "kun", "on"]
     
     else:
-        # parse flags to give direction to the scrapers.
+        # parse flags to give direction to the soup.
         for argument in args:
             if argument == "-m":
                 kanji_scrape_info.append("meaning") # note: scraping meanings not currently supported.
@@ -245,9 +258,12 @@ def parse_input(args):
                 kanji_scrape_info.append("on")
             elif argument == "-k":
                 kanji_scrape_info.append("kun")
+            elif argument == "-d":
+                word_scrape_info.append("def")
             elif argument == "-v" or argument == "--verbose":
                 verbose = True
                 kanji_scrape_info.append("verbose")
+                word_scrape_info.append("verbose")
             else:
                 print(f"error: unrecognizable flag/argument \"{argument}\"")
                 exit(1)
