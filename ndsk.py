@@ -96,7 +96,6 @@ def word_scrape(soup, word_scrape_info):
                 # print("# of divs found: ", len(definition_divs))
 
                 # for now, get the first few definitions of the first block of definitions.
-                print("looking for definitions...")
                 definition_divs = (definition_blocks[0]
                                    .find("div", class_="concept_light-meanings medium-9 columns")
                                    .find("div", class_="meanings-wrapper")
