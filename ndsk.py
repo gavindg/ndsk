@@ -81,7 +81,7 @@ allow the user to grab info such as the meaning of vocab words and their
 possible readings.
 
 TODO:
-* implement me
+* optimization... this is currently pretty slow.
 * document me
 * test me
 """
@@ -91,14 +91,39 @@ def word_scrape(soup, word_scrape_info):
 
     for elem in word_scrape_info:
         if elem == "def":  # get the definition...
-            pass
+            try:
+                definition_blocks = soup.find_all("div", class_="concept_light clearfix")
+                # print("# of divs found: ", len(definition_divs))
+
+                # for now, get the first few definitions of the first block of definitions.
+                print("looking for definitions...")
+                definition_divs = (definition_blocks[0]
+                                   .find("div", class_="concept_light-meanings medium-9 columns")
+                                   .find("div", class_="meanings-wrapper")
+                                   .find_all("div", class_="meaning-wrapper")) # .find_all("div", class_="meaning-meaning")
+
+                definitions = []
+                for div in definition_divs:
+                    definitions.append(div.find("span", class_="meaning-meaning"))
+
+                if definitions is not None and not all(deff is None for deff in definitions):  # if we found definitions
+                    out += "Definitions: "
+                    for definition in definitions:
+                        if definition is not None:
+                            out += definition.text + ", "
+                    if out[-2:] == ", ":
+                        out = out[:-2]
+                    out += ".\n"
+                elif verbose:
+                    print("No definitions found.")
+            except AttributeError:
+                if verbose:
+                    print("No definitions found.")
+            except Exception as e:
+                print(type(e))
 
         else:  # probably "verbose" or potentially an invalid element that should be ignored.
             pass
-
-    # not quite ready yet...
-    print("scraping #word page not currently supported.")
-    exit(1)
 
     return out
 
@@ -157,7 +182,7 @@ def kanji_scrape(soup, kanji_scrape_info):
                         out += reading.text.strip() + ", "
                     if out[-2:] == ", ":
                         out = out[:-2]  # if the last two chars are the comma/space, remove it.
-                    out += "\n"
+                    out += ".\n"
                 elif verbose:
                     out += "No On'yomi readings found.\n"
             except AttributeError:  # can be thrown by soup.find() if the div dne
@@ -173,7 +198,7 @@ def kanji_scrape(soup, kanji_scrape_info):
                         out += meaning.text.strip() + ", "
                     if out[-2:] == ", ":
                         out = out[:-2]  # if the last two chars are the comma/space, remove it.
-                    out += "\n"
+                    out += ".\n"
                 elif verbose:
                     out += "No meanings found.\n"
             except AttributeError:  # can be thrown by soup.find() if the div dne
