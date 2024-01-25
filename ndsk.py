@@ -26,9 +26,15 @@ JAPANESE_CHAR_UNICODE_RANGES = [
 
 
 def main():
-    jp_search_term, word_scrape_info, kanji_scrape_info, verbose = parse_input(sys.argv)
+    jp_search_term, word_scrape_info, kanji_scrape_info = parse_input(sys.argv)
     req_list = []
     out = ""        # output string
+
+    verbose = False
+    if kanji_scrape_info is not None:
+        verbose = "verbose" in kanji_scrape_info
+    elif word_scrape_info is not None:
+        verbose = "verbose" in word_scrape_info
 
     # # if we need to scrape the #word page for this kanji, add a request for it
     if word_scrape_info != []:
@@ -81,13 +87,49 @@ allow the user to grab info such as the meaning of vocab words and their
 possible readings.
 
 TODO:
-* implement me
+* optimization... this is currently pretty slow.
 * document me
 * test me
 """
 def word_scrape(soup, word_scrape_info):
-    print("scraping #word page not currently supported.")
-    exit(1)
+    out = ""
+    verbose = "verbose" in word_scrape_info
+
+    for elem in word_scrape_info:
+        if elem == "def":  # get the definition...
+            try:
+                definition_blocks = soup.find_all("div", class_="concept_light clearfix")
+
+                # for now, get the first few definitions of the first block of definitions.
+                definition_divs = (definition_blocks[0]
+                                   .find("div", class_="concept_light-meanings medium-9 columns")
+                                   .find("div", class_="meanings-wrapper")
+                                   .find_all("div", class_="meaning-wrapper"))
+
+                definitions = []
+                for div in definition_divs:
+                    definitions.append(div.find("span", class_="meaning-meaning"))
+
+                if definitions is not None:  # if we found definitions
+                    out += "Definitions: "
+                    for definition in definitions:
+                        if definition is not None:
+                            out += definition.text + ", "
+                    if out[-2:] == ", ":
+                        out = out[:-2]
+                    out += ".\n"
+                elif verbose:
+                    print("No definitions found.")
+            except AttributeError:
+                if verbose:
+                    print("No definitions found.")
+            except Exception as e:
+                print(type(e))
+
+        else:  # probably "verbose" or potentially an invalid element that should be ignored.
+            pass
+
+    return out
 
 """
 This function scrapes the #kanji and returns a string containing
@@ -144,7 +186,7 @@ def kanji_scrape(soup, kanji_scrape_info):
                         out += reading.text.strip() + ", "
                     if out[-2:] == ", ":
                         out = out[:-2]  # if the last two chars are the comma/space, remove it.
-                    out += "\n"
+                    out += ".\n"
                 elif verbose:
                     out += "No On'yomi readings found.\n"
             except AttributeError:  # can be thrown by soup.find() if the div dne
@@ -160,7 +202,7 @@ def kanji_scrape(soup, kanji_scrape_info):
                         out += meaning.text.strip() + ", "
                     if out[-2:] == ", ":
                         out = out[:-2]  # if the last two chars are the comma/space, remove it.
-                    out += "\n"
+                    out += ".\n"
                 elif verbose:
                     out += "No meanings found.\n"
             except AttributeError:  # can be thrown by soup.find() if the div dne
@@ -181,7 +223,7 @@ that such characters can be found in.
 logic from StackOverflow, reference: https://stackoverflow.com/questions/30069846/how-to-find-out-chinese-or-japanese-character-in-a-string-in-python
 """
 def is_japanese_char(char):
-    return any([range["from"] <= ord(char) <= range["to"] for range in JAPANESE_CHAR_UNICODE_RANGES])
+    return any([ascii_range["from"] <= ord(char) <= ascii_range["to"] for ascii_range in JAPANESE_CHAR_UNICODE_RANGES])
 
 
 """
@@ -216,7 +258,6 @@ TODO:
 def parse_input(args):
     word_scrape_info = []
     kanji_scrape_info = []
-    verbose = False
 
     # nothing to do if we don't have even a kanji...
     if len(args) < 2:
@@ -233,21 +274,23 @@ def parse_input(args):
     args = args[2:] 
 
     if args is []:
-        # do a generic info splash... for now, just print the kanji's kun'yomi and on'yomi
+        # do a generic info splash... for now, just print the kanji's inherent meaning, kun'yomi, and on'yomi
         kanji_scrape_info = ["meaning", "kun", "on"]
     
     else:
-        # parse flags to give direction to the scrapers.
+        # parse flags to give direction to the soup.
         for argument in args:
             if argument == "-m":
-                kanji_scrape_info.append("meaning") # note: scraping meanings not currently supported.
+                kanji_scrape_info.append("meaning")
             elif argument == "-o":
                 kanji_scrape_info.append("on")
             elif argument == "-k":
                 kanji_scrape_info.append("kun")
+            elif argument == "-d":
+                word_scrape_info.append("def")
             elif argument == "-v" or argument == "--verbose":
-                verbose = True
                 kanji_scrape_info.append("verbose")
+                word_scrape_info.append("verbose")
             else:
                 print(f"error: unrecognizable flag/argument \"{argument}\"")
                 exit(1)
@@ -256,7 +299,8 @@ def parse_input(args):
     # first, the kanji / search term, 
     # then the info to be used in scraping the #word page,
     # and finally the info for scraping the #kanji page.
-    return (jp_search_term, word_scrape_info, kanji_scrape_info, verbose)
+    # "verbose" is a bool that is sometimes used to display error information.
+    return jp_search_term, word_scrape_info, kanji_scrape_info
 
 
 if __name__ == "__main__":
